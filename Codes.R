@@ -157,18 +157,18 @@ bar_chart <- base_plot +
   scale_fill_brewer(palette = 'Set2') +
   theme_minimal() +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 13),  # Larger title
-    plot.subtitle = element_text(hjust = 0.5, size = 9),  # Subtitle size
-    axis.text.y = element_text(size = 6),  # Increase y-axis label size
-    axis.text.x = element_text(size = 6),  # Increase x-axis text size
-    legend.position = "bottom",  # Move legend to the right
+    plot.title = element_text(hjust = 0.5, size = 13), 
+    plot.subtitle = element_text(hjust = 0.5, size = 9),  
+    axis.text.y = element_text(size = 6),  
+    axis.text.x = element_text(size = 6), 
+    legend.position = "bottom", 
     legend.title = element_text(size = 10),
-    legend.text = element_text(size = 6)
+    legend.text = element_text(size = 4)
   )
  
   
 barStacked_counts = bar_chart + geom_bar(stat = "identity",
-                                         position = 'stack')#defaul
+                                         position = 'stack')
 
 del2Draft= barStacked_counts + coord_flip()
 del2Draft
