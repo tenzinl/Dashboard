@@ -5,20 +5,11 @@ output:
     storyboard: true
 ---
 
+
 ```{r setup, include=FALSE}
 library(flexdashboard) 
-library(flexdashboard)
-library(ggplot2)
-library(scales)
-rm(list = ls()) 
-
-location='https://github.com/DACSS-Visual/tabular_univar_cat/raw/main/data/'
-file='eduwa.rda'
-link=paste0(location,file)
-
-load(file=url(link))
-
 ```
+
 
 ## Intro {.sidebar}
 
@@ -26,70 +17,17 @@ Preparing the dashboard based on the instructions given at @magallanes_reyes_dat
 
 ### School Towns
 
-
-```{r, include=FALSE}
-townEduwa=eduwa[eduwa$LocaleType=='Town',]
-table(townEduwa$LocaleSub)
-
-townEduwa$LocaleSub=droplevels(townEduwa$LocaleSub)
-
-absoluteT=table(townEduwa$LocaleSub)
-absoluteT
-
-propT=prop.table(absoluteT)*100
-propT
-
-(tableFreq=as.data.frame(absoluteT))
-
-# renaming data frame columns
-names(tableFreq)=c("Locale","Count")
-# adding percents:
-tableFreq$Percent=as.vector(propT)
-
-tableFreq
-tableFreq$Locale <- gsub("Town: ", "", tableFreq$Locale)
-
+```{r}
+readRDS("del1Draft.rds")
 ```
+
+
+### State Police Arrests
 
 ```{r}
-titleText= 'The Unequal Distribution of Public Schools Across Town Types'
-sub_titleText='Washington State - 2019'
-sourceText='Source: US Department of Education'
-
-x.AxisText="Locations"
-y.AxisText="Count"
-
-LABELS=paste0(round(tableFreq$Percent,2), '%')
-base= ggplot(data = tableFreq, 
-             aes(x = reorder(Locale,Percent),y = Percent)) 
-base= base + theme_minimal()
-
-plot1 = base + geom_bar(fill ="lightblue",
-                        stat = 'identity') 
-plot2 = plot1 + labs(title=titleText,
-                     subtitle = sub_titleText,
-                     x =NULL, 
-                     y = NULL,
-                     caption = sourceText)
-plot3 = plot2 + geom_hline(yintercept = 25, 
-                           linetype="dashed", 
-                           linewidth=1.5, 
-                           alpha=0.5)
-plot4 = plot2 + scale_y_continuous(breaks=c(0,25,50),
-                                 limits = c(0, 50),
-                                
-                            labels=unit_format(suffix = '%')) 
-
-plot5 = plot4 + theme(plot.caption = element_text(hjust = 0),
-                      plot.title = element_text(hjust = 0.5),
-                      plot.subtitle = element_text(hjust = 0.5))
-
-
-plot6 = plot5 + geom_text(hjust=-0.2, 
-                          size = 4,
-                          aes(y = Percent,
-                              label = LABELS))
-plot6 + coord_flip()
-
+readRDS("del2Draft.rds")
 ```
+
+
+
 
