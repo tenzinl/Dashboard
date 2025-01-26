@@ -11,6 +11,9 @@ library(scales)
 library(rio)
 library(dplyr)
 library(tidyr)
+library(sf)
+library(dplyr)
+
 
 location='https://github.com/DACSS-Visual/tabular_univar_cat/raw/main/data/'
 file='eduwa.rda'
@@ -91,21 +94,8 @@ saveRDS(del1Draft, file = "del1Draft.rds")
 linkMass="https://github.com/DACSS-Visual/tabular_bivar_catcat/raw/refs/heads/main/data/MSP%20DFS%20Arrests%2019-20Q1.xlsx"
 arrests=rio::import(linkMass,which = 1)
 
-offenseUCRrace=table(arrests$`Arrest Offense by UCR Code`,arrests$Race)
-offenseUCRrace_df <- as.data.frame(offenseUCRrace)
-
-colnames(offenseUCRrace_df) <- c("UCR_Code", "Race", "Count")
-
-offenseUCRrace_df$UCR_Code <- gsub(" or ", ",", offenseUCRrace_df$UCR_Code) 
-offenseUCRrace_df$UCR_Code <- gsub("-", ",", offenseUCRrace_df$UCR_Code)    
-
-# Separate rows for compound UCR codes
-arrests_data_cleaned <- offenseUCRrace_df %>%
-  separate_rows(UCR_Code, sep = ",")
-
-
 # Recode Race
-arrests_data_cleaned <- arrests_data_cleaned %>%
+arrests <- arrests %>%
   mutate(
     Race = case_when(
       Race == "I" ~ "American Indian or Alaskan Native",
@@ -120,62 +110,197 @@ arrests_data_cleaned <- arrests_data_cleaned %>%
     )
   )
 
+arrests <- arrests %>%
+  mutate(
+    UCR_Code = gsub(" or ", ",", `Arrest Offense by UCR Code`),  # Replace "or" with ","
+    UCR_Code = gsub("-", ",", `Arrest Offense by UCR Code`)     # Replace "-" with ","
+  ) %>%
+  separate_rows(`Arrest Offense by UCR Code`, sep = ",") 
+
 # Recode Arrest Offense by UCR Code
 
-arrests_data_cleaned <- arrests_data_cleaned %>%
+arrests<- arrests %>%
   mutate(
     Crime_Group = case_when(
-      UCR_Code %in% c("09A", "100", "120", "11A", "11B", "11C", "11D", "13A", "13B", "13C") ~ "Violent Crimes",
-      UCR_Code %in% c("200", "220", "240", "250", "270", "280", "MV", "290", "23A", "23B", "23C", "23D", "23F", "23G", "23H") ~ "Property Crimes",
-      UCR_Code %in% c("35A", "35B") ~ "Drug-Related Crimes",
-      UCR_Code %in% c("36A", "36B", "370") ~ "Sexual Offenses",
-      UCR_Code %in% c("39A", "39B", "39C", "39D", "40A", "40B", "40C", "64A", "64B", 
+      `Arrest Offense by UCR Code` %in% c("09A", "100", "120", "11A", "11B", "11C", "11D", "13A", "13B", "13C") ~ "Violent Crimes",
+      `Arrest Offense by UCR Code` %in% c("200", "220", "240", "250", "270", "280", "MV", "290", "23A", "23B", "23C", "23D", "23F", "23G", "23H") ~ "Property Crimes",
+      `Arrest Offense by UCR Code` %in% c("35A", "35B") ~ "Drug-Related Crimes",
+      `Arrest Offense by UCR Code` %in% c("36A", "36B", "370") ~ "Sexual Offenses",
+      `Arrest Offense by UCR Code` %in% c("39A", "39B", "39C", "39D", "40A", "40B", "40C", "64A", "64B", 
                       "90B", "90C", "90D", "90E", "90F", "90G", "90H", "90J", "C90C") ~ "Public Order Crimes",
-      UCR_Code %in% c("210", "230", "250", "270","26A","26C","90A") ~ "White-Collar/Financial Crimes",
-      UCR_Code %in% c("520") ~ "Weapon-Related Crimes",
-      UCR_Code %in% c("720", "90", "90Z") ~ "All Other Crimes",
+      `Arrest Offense by UCR Code` %in% c("210", "230", "250", "270","26A","26C","90A") ~ "White-Collar/Financial Crimes",
+      `Arrest Offense by UCR Code` %in% c("520") ~ "Weapon-Related Crimes",
+      `Arrest Offense by UCR Code` %in% c("720", "90", "90Z") ~ "All Other Crimes",
       TRUE ~ "Unknown"
     )
   )
 
+offenseUCRrace = table(arrests$Crime_Group, arrests$Race)
 
-base_plot <- ggplot(data = arrests_data_cleaned, 
-                    aes(x = Crime_Group, y = Count, fill = Race)) +
-  theme_minimal()
 
-  
-bar_chart <- base_plot + 
-  geom_bar(stat = "identity", position = "dodge") + 
+offenseUCRrace_df = as.data.frame(offenseUCRrace)
+
+
+colnames(offenseUCRrace_df) = c("Crime_Group", "Race", "Count")
+
+# Step 7: Calculate marginal proportions by Race (margin = 2)
+offenseUCRrace_mgCol = prop.table(offenseUCRrace, margin = 2) * 100
+
+
+offenseUCRrace_mgCol_df = as.data.frame(offenseUCRrace_mgCol)
+
+
+colnames(offenseUCRrace_mgCol_df) = c("Crime_Group", "Race", "pctCol")
+
+
+offenseUCRrace_df = merge(offenseUCRrace_df, offenseUCRrace_mgCol_df, by = c("Crime_Group", "Race"))
+
+base1 = ggplot(offenseUCRrace_df, aes(x = Crime_Group, y = pctCol ) ) 
+
+#the bars
+bars1  = base1 + geom_bar( stat = "identity" ) + theme_minimal()
+
+# bar per day time with 'facet'
+bars1 = bars1 + facet_grid(~ Race) 
+
+bars1
+
+barsFacet = bars1 + facet_grid(~ Race)  # X
+
+barsFacet + coord_flip()
+
+baseRE  = ggplot(offenseUCRrace_df, 
+                 aes(x = reorder(Crime_Group, pctCol), #here
+                     y = pctCol ) ) + theme_minimal()
+
+barsRE = baseRE + geom_bar( stat = "identity" ) 
+barsREFacet = barsRE + facet_grid( ~ Race) 
+barsREFacet= barsREFacet + coord_flip() 
+
+final_bar <- barsREFacet + 
+  theme(
+    axis.text.y = element_text(size = 8, angle = 20),  # Adjust y-axis text size and angle
+    strip.text = element_text(size = 6)               # Shrink facet label text size
+  ) + 
+  geom_text(aes(label = ifelse(pctCol > 4, round(pctCol,1), "")),  # Annotate only if pctCol > 4
+            nudge_y = 2, size = 1.5, hjust = -0.05, ) +
   labs(
     title = "Arrests by Crime Group and Race in Massachusetts",
     subtitle = "Analyzing arrest offense by race",
-    x = "Crime Group",
-    y = "Count of Arrests",
-    fill = "Race", 
-    caption = "Source: Massachusetts State Police"
-  ) +
-  scale_fill_brewer(palette = 'Set2') +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 13), 
-    plot.subtitle = element_text(hjust = 0.5, size = 9),  
-    axis.text.y = element_text(size = 6),  
-    axis.text.x = element_text(size = 6), 
-    legend.position = "bottom", 
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 4)
+    caption = "Source: Massachusetts State Police",
+    x = "",
+    y = "%"
   )
- 
-  
-barStacked_counts = bar_chart + geom_bar(stat = "identity",
-                                         position = 'stack')
 
-del2Draft= barStacked_counts + coord_flip()
-del2Draft
+
+del2Draft= final_bar
 
 
 # save del2Draft ----------------------------------------------------------
 saveRDS(del2Draft, file = "del2Draft.rds")
 
 
-  
+
+
+# deliverable 3 ----------------------------------------------------------
+
+linkBoston="https://github.com/DACSS-Visual/SpatialData/raw/refs/heads/main/data/BostonContrib.xlsx"
+
+bostonCont=rio::import(linkBoston)
+
+#see it
+head(bostonCont)
+
+
+linkZips='https://raw.githubusercontent.com/DACSS-Visual/SpatialData/refs/heads/main/data/zip_codes.json'
+bostonZips=sf::read_sf(linkZips)
+#see it
+head(bostonZips)
+
+plot(bostonZips[2])
+
+summary(bostonCont$Amount)
+
+tapply(bostonCont$Amount,bostonCont$`Tender Type Description`,summary)
+
+str(bostonCont,width = 60, strict.width = 'cut')
+cont_tender=bostonCont[bostonCont$`Tender Type Description`%in% c('Check','Credit Card'),]
+
+cont_tenderagg <- cont_tender %>%
+  group_by(Zip, `Tender Type Description`) %>%
+  summarise(
+    counts = n(),
+    amountPerCap = mean(Amount, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cont_tenderagg <- cont_tenderagg %>%
+  group_by(Zip) %>% 
+  mutate(
+    percentage = counts / sum(counts) * 100
+  ) %>%
+  ungroup() 
+cont_tenderagg$counts <- NULL
+
+length(setdiff(cont_tenderagg$Zip,bostonZips$ZIP5))
+
+length(setdiff(bostonZips$ZIP5, cont_tenderagg$Zip))
+
+contrib_zipMap=merge(bostonZips,cont_tenderagg,
+                     by.x='ZIP5', # 
+                     by.y='Zip')
+
+do.call(data.frame,aggregate(data=contrib_zipMap,
+                             amountPerCap~`Tender Type Description`,fivenum))
+
+ggplot(contrib_zipMap)+ aes(x=amountPerCap) + geom_density() + facet_wrap(~`Tender Type Description`,ncol = 1) + scale_x_log10()
+
+
+customCuts=c(0,10,100,200,300,400,500,1000)
+
+
+theLabelsForLevels=c("upTo_10",">10_to100", ">100_to200",">200_to300", ">300_to400","400_to500","MoreThan_500")
+
+contrib_zipMap$amount_perCap_cat <- cut(
+  contrib_zipMap$amountPerCap, 
+  breaks = customCuts, 
+  labels = theLabelsForLevels, 
+  right = FALSE # Use left-inclusive intervals
+)
+
+# Optionally assign to a new variable
+contrib_zipMap$amount_perCap_catLabel <- contrib_zipMap$amount_perCap_cat
+
+# Inspect the first 10 values
+head(contrib_zipMap$amount_perCap_catLabel, 10)
+
+
+
+final_plot = ggplot() +
+  geom_sf(data = contrib_zipMap, aes(fill = amount_perCap_cat), color = NA) +
+  labs(
+    fill = "US$ PerCapita",
+    title = "Check Contributions Lead Slightly Over Credit Card Contributions",
+    subtitle = "Boston ZIP boundaries, 2024 contributions"
+  ) +
+  scale_fill_viridis_d(option = "plasma", na.value = "grey90") +
+  facet_grid(~ `Tender Type Description`, labeller = label_both) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  )
+
+
+del3Draft= final_plot
+
+
+# save del2Draft ----------------------------------------------------------
+saveRDS(del3Draft, file = "del3Draft.rds")
+
+
+
+
