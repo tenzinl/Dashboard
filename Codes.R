@@ -224,27 +224,16 @@ summary(bostonCont$Amount)
 tapply(bostonCont$Amount,bostonCont$`Tender Type Description`,summary)
 
 str(bostonCont,width = 60, strict.width = 'cut')
+
 cont_tender=bostonCont[bostonCont$`Tender Type Description`%in% c('Check','Credit Card'),]
 
 cont_tenderagg <- cont_tender %>%
   group_by(Zip, `Tender Type Description`) %>%
   summarise(
-    counts = n(),
     amountPerCap = mean(Amount, na.rm = TRUE),
     .groups = "drop"
   )
 
-cont_tenderagg <- cont_tenderagg %>%
-  group_by(Zip) %>% 
-  mutate(
-    percentage = counts / sum(counts) * 100
-  ) %>%
-  ungroup() 
-cont_tenderagg$counts <- NULL
-
-length(setdiff(cont_tenderagg$Zip,bostonZips$ZIP5))
-
-length(setdiff(bostonZips$ZIP5, cont_tenderagg$Zip))
 
 contrib_zipMap=merge(bostonZips,cont_tenderagg,
                      by.x='ZIP5', # 
@@ -253,11 +242,8 @@ contrib_zipMap=merge(bostonZips,cont_tenderagg,
 do.call(data.frame,aggregate(data=contrib_zipMap,
                              amountPerCap~`Tender Type Description`,fivenum))
 
-ggplot(contrib_zipMap)+ aes(x=amountPerCap) + geom_density() + facet_wrap(~`Tender Type Description`,ncol = 1) + scale_x_log10()
 
-
-customCuts=c(0,10,100,200,300,400,500,1000)
-
+customCuts <- c(0, 10, 100, 200, 300, 400, 500, 1000)
 
 theLabelsForLevels=c("upTo_10",">10_to100", ">100_to200",">200_to300", ">300_to400","400_to500","MoreThan_500")
 
@@ -265,34 +251,33 @@ contrib_zipMap$amount_perCap_cat <- cut(
   contrib_zipMap$amountPerCap, 
   breaks = customCuts, 
   labels = theLabelsForLevels, 
-  right = FALSE # Use left-inclusive intervals
+  right = FALSE 
 )
-
-# Optionally assign to a new variable
-contrib_zipMap$amount_perCap_catLabel <- contrib_zipMap$amount_perCap_cat
-
-# Inspect the first 10 values
-head(contrib_zipMap$amount_perCap_catLabel, 10)
 
 
 
 final_plot = ggplot() +
   geom_sf(data = contrib_zipMap, aes(fill = amount_perCap_cat), color = NA) +
   labs(
-    fill = "US$ PerCapita",
-    title = "Check Contributions Lead Slightly Over Credit Card Contributions",
-    subtitle = "Boston ZIP boundaries, 2024 contributions"
+    fill = "Average US$ PerCapita",
+    title = "Check Contributions Lead Over Credit Card Contributions",
+    subtitle = "Boston ZIP boundaries, 2024 contributions",
+    caption = "Source: Massachusetts Office of Campaign and Political Finance",
   ) +
-  scale_fill_viridis_d(option = "plasma", na.value = "grey90") +
-  facet_grid(~ `Tender Type Description`, labeller = label_both) +
+  scale_fill_viridis_d(option = "magma", na.value = "grey90") +
+  facet_grid(~ `Tender Type Description`, labeller = as_labeller(c(
+    "Check" = "Check Contributions",
+    "Credit Card" = "Credit Card Contributions"
+  ))) +
   theme_minimal() +
   theme(
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank(),
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks = element_blank()
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    panel.border = element_blank()
   )
+
 
 
 del3Draft= final_plot
@@ -300,7 +285,5 @@ del3Draft= final_plot
 
 # save del2Draft ----------------------------------------------------------
 saveRDS(del3Draft, file = "del3Draft.rds")
-
-
 
 
